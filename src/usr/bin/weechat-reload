@@ -1,0 +1,32 @@
+#!/bin/sh
+# WeeChat
+# A container running WeeChat, a open-source Internet Relay Chat (IRC) client.
+#
+# Copyright (c) 2023  SGS Serious Gaming & Simulations GmbH
+#
+# This work is licensed under the terms of the MIT license.
+# For a copy, see LICENSE file or <https://opensource.org/licenses/MIT>.
+#
+# SPDX-License-Identifier: MIT
+# License-Filename: LICENSE
+
+set -eu -o pipefail
+export LC_ALL=C
+
+WEECHAT_FIFO="${WEECHAT_RUNTIME:-/run/weechat}/weechat_fifo"
+
+if ! [ -e "$WEECHAT_FIFO" ]; then
+    echo "WeeChat is apparently not running: FIFO file '$WEECHAT_FIFO' not found" >&2
+    exit 2
+fi
+
+if ! [ -p "$WEECHAT_FIFO" ]; then
+    echo "Unable to use WeeChat FIFO file '$WEECHAT_FIFO': Not a named pipe" >&2
+    exit 1
+elif ! [ -r "$WEECHAT_FIFO" ]; then
+    echo "Unable to use WeeChat FIFO file '$WEECHAT_FIFO': Permission denied" >&2
+    exit 1
+fi
+
+printf '%s\n' "*/reload" "*/relay sslcertkey" \
+    | tee "$WEECHAT_FIFO" > /dev/null

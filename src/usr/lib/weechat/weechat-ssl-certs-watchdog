@@ -1,0 +1,42 @@
+#!/bin/sh
+# WeeChat
+# A container running WeeChat, a open-source Internet Relay Chat (IRC) client.
+#
+# Copyright (c) 2023  SGS Serious Gaming & Simulations GmbH
+#
+# This work is licensed under the terms of the MIT license.
+# For a copy, see LICENSE file or <https://opensource.org/licenses/MIT>.
+#
+# SPDX-License-Identifier: MIT
+# License-Filename: LICENSE
+
+set -eu -o pipefail
+export LC_ALL=C
+
+WEECHAT_CONFIG="${WEECHAT_CONFIG:-/etc/weechat}"
+
+log() {
+    printf "[%s] %s: %s\n" "$(date +'%Y-%m-%d %H:%M:%S%:z')" "weechat-ssl-certs-watchdog" "$(printf "$@")" >&2
+}
+
+set -- "$WEECHAT_CONFIG/ssl/"*"/"
+if [ $# -eq 1 ] && [ "$1" == "$WEECHAT_CONFIG/ssl/*/" ] || [ $# -eq 0 ]; then
+    exit 0
+fi
+
+log "Starting SSL certificates watchdog service"
+inotifywait -e close_write,delete,move -m "$@" \
+    | while read -r DIRECTORY EVENTS FILENAME; do
+        log "Receiving inotify event '%s' for '%s%s'" "$EVENTS" "$DIRECTORY" "$FILENAME"
+
+        # wait till 300 sec (5 min) after the last event, new events reset the timer
+        while read -t 300 -r DIRECTORY EVENTS FILENAME; do
+            log "Receiving inotify event '%s' for '%s%s'" "$EVENTS" "$DIRECTORY" "$FILENAME"
+        done
+
+        log "Rebuilding SSL certificates"
+        /usr/lib/weechat/weechat-ssl-setup
+
+        log "Triggering configuration reload"
+        weechat-reload
+    done

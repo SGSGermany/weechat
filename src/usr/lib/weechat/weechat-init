@@ -1,0 +1,99 @@
+#!/bin/sh
+# WeeChat
+# A container running WeeChat, a open-source Internet Relay Chat (IRC) client.
+#
+# Copyright (c) 2023  SGS Serious Gaming & Simulations GmbH
+#
+# This work is licensed under the terms of the MIT license.
+# For a copy, see LICENSE file or <https://opensource.org/licenses/MIT>.
+#
+# SPDX-License-Identifier: MIT
+# License-Filename: LICENSE
+
+WEECHAT_CONFIG="${WEECHAT_CONFIG:-/etc/weechat}"
+WEECHAT_RUNTIME="${WEECHAT_RUNTIME:-/run/weechat}"
+
+PRINT_ONLY=
+[ "${1:-}" != "--dry-run" ] || PRINT_ONLY=1
+
+# general setup
+set -- \
+    '*/set weechat.signal.sighup "/reload;/relay sslcertkey"' \
+    '*/set weechat.signal.sigquit "/upgrade -yes -quit"' \
+    '*/set weechat.signal.sigterm "/upgrade -yes -quit"'
+
+# load secrets
+set -- "$@" \
+    '*/set sec.crypt.passphrase_command "/usr/lib/weechat/weechat-pass"' \
+    "*/secure passphrase $(/usr/lib/weechat/weechat-pass)"
+
+if [ -e "/run/secrets" ]; then
+    if ! [ -d "/run/secrets" ]; then
+        echo "Failed to load WeeChat secrets from '/run/secrets': Not a directory" >&2
+        exit 1
+    elif ! [ -r "/run/secrets" ]; then
+        echo "Failed to load WeeChat secrets from '/run/secrets': Permission denied" >&2
+        exit 1
+    fi
+
+    for SECRET_NAME in /run/secrets/weechat_*; do
+        SECRET_NAME="$(basename "$SECRET_NAME")"
+        [ "$SECRET_NAME" != "weechat_pass" ] || continue
+
+        SECRET="$(/usr/lib/weechat/weechat-pass "$SECRET_NAME")"
+        [ -n "$SECRET" ] || continue
+
+        set -- "$@" \
+            "*/secure set ${SECRET_NAME:8} $SECRET"
+    done
+fi
+
+# load weechatrc
+if [ -e "$WEECHAT_CONFIG/weechatrc" ]; then
+    if ! [ -f "$WEECHAT_CONFIG/weechatrc" ]; then
+        echo "Failed to read WeeChat rc file '$WEECHAT_CONFIG/weechatrc': Not a file" >&2
+        exit 1
+    elif ! [ -r "$WEECHAT_CONFIG/weechatrc" ]; then
+        echo "Failed to read WeeChat rc file '$WEECHAT_CONFIG/weechatrc': Permission denied" >&2
+        exit 1
+    fi
+
+    while IFS= read -r CMD; do
+        [ -n "$CMD" ] || continue
+        [ "${CMD:0:1}" != "#" ] || continue
+
+        set -- "$@" \
+            "*$CMD"
+    done < "$WEECHAT_CONFIG/weechatrc"
+fi
+
+# always write config on startup
+set -- "$@" \
+    "*/save"
+
+# connect to servers with autoconnect enabled
+set -- "$@" \
+    "*/connect -auto"
+
+# just print commands, if requested
+if [ -n "$PRINT_ONLY" ]; then
+    printf '%s\n' "$@"
+    exit
+fi
+
+# write commands to FIFO pipe
+if ! [ -e "$WEECHAT_RUNTIME/weechat_fifo" ]; then
+    echo "WeeChat is apparently not running: FIFO file '$WEECHAT_RUNTIME/weechat_fifo' not found" >&2
+    exit 1
+fi
+
+if ! [ -p "$WEECHAT_RUNTIME/weechat_fifo" ]; then
+    echo "Unable to use WeeChat FIFO file '$WEECHAT_RUNTIME/weechat_fifo': Not a named pipe" >&2
+    exit 1
+elif ! [ -r "$WEECHAT_RUNTIME/weechat_fifo" ]; then
+    echo "Unable to use WeeChat FIFO file '$WEECHAT_RUNTIME/weechat_fifo': Permission denied" >&2
+    exit 1
+fi
+
+printf '%s\n' "$@" \
+    | tee "$WEECHAT_RUNTIME/weechat_fifo" > /dev/null || exit 1

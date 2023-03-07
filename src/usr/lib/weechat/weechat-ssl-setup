@@ -1,0 +1,54 @@
+#!/bin/sh
+# WeeChat
+# A container running WeeChat, a open-source Internet Relay Chat (IRC) client.
+#
+# Copyright (c) 2023  SGS Serious Gaming & Simulations GmbH
+#
+# This work is licensed under the terms of the MIT license.
+# For a copy, see LICENSE file or <https://opensource.org/licenses/MIT>.
+#
+# SPDX-License-Identifier: MIT
+# License-Filename: LICENSE
+
+set -eu -o pipefail
+export LC_ALL=C
+
+WEECHAT_CONFIG="${WEECHAT_CONFIG:-/etc/weechat}"
+WEECHAT_RUNTIME="${WEECHAT_RUNTIME:-/run/weechat}"
+
+log() {
+    printf "[%s] %s: %s\n" "$(date +'%Y-%m-%d %H:%M:%S%:z')" "weechat-ssl-setup" "$(printf "$@")" >&2
+}
+
+if ! [ -e "$WEECHAT_CONFIG/ssl" ]; then
+    mkdir "$WEECHAT_CONFIG/ssl"
+    chmod 750 "$WEECHAT_CONFIG/ssl"
+    chown weechat:weechat "$WEECHAT_CONFIG/ssl"
+elif ! [ -d "$WEECHAT_CONFIG/ssl" ]; then
+    echo "Invalid WeeChat SSL directory '$WEECHAT_CONFIG/ssl': Not a directory" >&2
+    exit 1
+fi
+
+set -- "$WEECHAT_CONFIG/ssl/"*"/"
+if [ $# -eq 1 ] && [ "$1" == "$WEECHAT_CONFIG/ssl/*/" ] || [ $# -eq 0 ]; then
+    exit 0
+fi
+
+for CERT in "$@"; do
+    CERT="$(basename "$CERT")"
+
+    log "Creating SSL certificate '%s' from '%s'" \
+        "$WEECHAT_RUNTIME/$CERT.pem" \
+        "$WEECHAT_CONFIG/ssl/$CERT/{cert.pem,chain.pem,key.pem}"
+
+    if ! [ -e "$WEECHAT_RUNTIME/$CERT.pem" ]; then
+        touch "$WEECHAT_RUNTIME/$CERT.pem"
+        chmod 640 "$WEECHAT_RUNTIME/$CERT.pem"
+        chown weechat:weechat "$WEECHAT_RUNTIME/$CERT.pem"
+    fi
+
+    cat "$WEECHAT_CONFIG/ssl/$CERT/cert.pem" \
+        "$WEECHAT_CONFIG/ssl/$CERT/chain.pem" \
+        "$WEECHAT_CONFIG/ssl/$CERT/key.pem" \
+        | tee "$WEECHAT_RUNTIME/$CERT.pem" > /dev/null
+done

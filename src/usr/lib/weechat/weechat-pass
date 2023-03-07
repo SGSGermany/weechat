@@ -1,0 +1,34 @@
+#!/bin/sh
+# WeeChat
+# A container running WeeChat, a open-source Internet Relay Chat (IRC) client.
+#
+# Copyright (c) 2023  SGS Serious Gaming & Simulations GmbH
+#
+# This work is licensed under the terms of the MIT license.
+# For a copy, see LICENSE file or <https://opensource.org/licenses/MIT>.
+#
+# SPDX-License-Identifier: MIT
+# License-Filename: LICENSE
+
+set -eu -o pipefail
+export LC_ALL=C
+
+SECRET="${1:-weechat_pass}"
+
+if [ "${SECRET:0:8}" != "weechat_" ]; then
+    echo "Failed to read '$SECRET' secret: Not a WeeChat secret" >&2
+    exit 1
+elif ! [ -e "/run/secrets/$SECRET" ]; then
+    echo "Failed to read '$SECRET' secret: Not found" >&2
+    exit 1
+fi
+
+if ! [ -f "/run/secrets/$SECRET" ]; then
+    echo "Failed to read '$SECRET' secret: Not a file" >&2
+    exit 1
+elif ! [ -r "/run/secrets/$SECRET" ]; then
+    echo "Failed to read '$SECRET' secret: Permission denied" >&2
+    exit 1
+fi
+
+cat "/run/secrets/$SECRET"

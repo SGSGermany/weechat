@@ -1,0 +1,42 @@
+#!/bin/sh
+# WeeChat
+# A container running WeeChat, a open-source Internet Relay Chat (IRC) client.
+#
+# Copyright (c) 2023  SGS Serious Gaming & Simulations GmbH
+#
+# This work is licensed under the terms of the MIT license.
+# For a copy, see LICENSE file or <https://opensource.org/licenses/MIT>.
+#
+# SPDX-License-Identifier: MIT
+# License-Filename: LICENSE
+
+WEECHAT_CONFIG="${WEECHAT_CONFIG:-/etc/weechat}"
+WEECHAT_DATA="${WEECHAT_DATA:-/var/lib/weechat}"
+WEECHAT_CACHE="${WEECHAT_CACHE:-/var/cache/weechat}"
+WEECHAT_RUNTIME="${WEECHAT_RUNTIME:-/run/weechat}"
+
+WEECHAT="$(basename "${0:-weechat}")"
+WEECHAT_PATH="/opt/weechat"
+
+if ! [ -f "$WEECHAT_PATH/bin/$WEECHAT" ] || ! [ -x "$WEECHAT_PATH/bin/$WEECHAT" ]; then
+    echo "Invalid WeeChat binary: $WEECHAT" >&2
+    exit 1
+fi
+
+for ARG in "$@"; do
+    if [ "$ARG" == "-c" ] || [ "$ARG" == "--colors" ] \
+        || [ "$ARG" == "-h" ] || [ "$ARG" == "--help" ] \
+        || [ "$ARG" == "-l" ] || [ "$ARG" == "--license" ] \
+        || [ "$ARG" == "-v" ] || [ "$ARG" == "--version" ]
+    then
+        exec "$WEECHAT_PATH/bin/$WEECHAT" "$@"
+    fi
+done
+
+exec "$WEECHAT_PATH/bin/$WEECHAT" \
+    --upgrade \
+    -d "$WEECHAT_CONFIG:$WEECHAT_DATA:$WEECHAT_CACHE:$WEECHAT_RUNTIME" \
+    -r '/set fifo.file.enabled on' \
+    -r '/set fifo.file.path "${weechat_runtime_dir}/weechat_fifo"' \
+    -r '/exec /usr/lib/weechat/weechat-init' \
+    "$@"
