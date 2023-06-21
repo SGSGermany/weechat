@@ -11,7 +11,7 @@
 # License-Filename: LICENSE
 
 set -eu -o pipefail
-export LC_ALL=C
+export LC_ALL=C.UTF-8
 
 SECRET="${1:-weechat_pass}"
 
@@ -21,9 +21,7 @@ if [ "${SECRET:0:8}" != "weechat_" ]; then
 elif ! [ -e "/run/secrets/$SECRET" ]; then
     echo "Failed to read '$SECRET' secret: Not found" >&2
     exit 1
-fi
-
-if ! [ -f "/run/secrets/$SECRET" ]; then
+elif ! [ -f "/run/secrets/$SECRET" ]; then
     echo "Failed to read '$SECRET' secret: Not a file" >&2
     exit 1
 elif ! [ -r "/run/secrets/$SECRET" ]; then

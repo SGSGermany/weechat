@@ -11,19 +11,16 @@
 # License-Filename: LICENSE
 
 set -eu -o pipefail
-export LC_ALL=C
 
 WEECHAT_FIFO="${WEECHAT_RUNTIME:-/run/weechat}/weechat_fifo"
 
 if ! [ -e "$WEECHAT_FIFO" ]; then
     echo "WeeChat is apparently not running: FIFO file '$WEECHAT_FIFO' not found" >&2
     exit 2
-fi
-
-if ! [ -p "$WEECHAT_FIFO" ]; then
+elif ! [ -p "$WEECHAT_FIFO" ]; then
     echo "Unable to use WeeChat FIFO file '$WEECHAT_FIFO': Not a named pipe" >&2
     exit 1
-elif ! [ -r "$WEECHAT_FIFO" ]; then
+elif ! [ -r "$WEECHAT_FIFO" ] || ! [ -w "$WEECHAT_FIFO" ]; then
     echo "Unable to use WeeChat FIFO file '$WEECHAT_FIFO': Permission denied" >&2
     exit 1
 fi

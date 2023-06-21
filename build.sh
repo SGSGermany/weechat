@@ -11,7 +11,7 @@
 # License-Filename: LICENSE
 
 set -eu -o pipefail
-export LC_ALL=C
+export LC_ALL=C.UTF-8
 
 [ -v CI_TOOLS ] && [ "$CI_TOOLS" == "SGSGermany" ] \
     || { echo "Invalid build environment: Environment variable 'CI_TOOLS' not set or invalid" >&2; exit 1; }
@@ -44,8 +44,10 @@ con_build --tag "$IMAGE-base" \
 echo + "CONTAINER=\"\$(buildah from $(quote "$IMAGE-base"))\"" >&2
 CONTAINER="$(buildah from "$IMAGE-base")"
 
+echo + "MOUNT=\"\$(buildah mount $(quote "$CONTAINER"))\"" >&2
+MOUNT="$(buildah mount "$CONTAINER")"
+
 cmd buildah config \
-    --env VERSION- \
     --env HOME- \
     --user root \
     "$CONTAINER"
@@ -53,20 +55,17 @@ cmd buildah config \
 cmd buildah run "$CONTAINER" -- \
     deluser "user"
 
-cmd buildah run "$CONTAINER" -- \
-    rm -rf "/home/user"
+echo + "rm -rf …/home/user" >&2
+rm -rf "$MOUNT/home/user"
 
-cmd buildah run "$CONTAINER" -- \
-    rm "/usr/bin/weechat" "/usr/bin/weechat-headless"
-
-echo + "MOUNT=\"\$(buildah mount $(quote "$CONTAINER"))\"" >&2
-MOUNT="$(buildah mount "$CONTAINER")"
-
-pkg_install "$CONTAINER" \
-    inotify-tools
+echo + "rm -f …/usr/bin/weechat …/usr/bin/weechat-headless" >&2
+rm -f "$MOUNT/usr/bin/weechat" "$MOUNT/usr/bin/weechat-headless"
 
 echo + "rsync -v -rl --exclude .gitignore ./src/ …/" >&2
 rsync -v -rl --exclude '.gitignore' "$BUILD_DIR/src/" "$MOUNT/"
+
+pkg_install "$CONTAINER" \
+    inotify-tools
 
 user_add "$CONTAINER" weechat 65536 "$WEECHAT_DATA" "/bin/ash"
 
@@ -90,7 +89,19 @@ cmd buildah run "$CONTAINER" -- \
         "$WEECHAT_CACHE" \
         "$WEECHAT_RUNTIME"
 
+echo + "WEECHAT_VERSION=\"\$(buildah run $(quote "$CONTAINER") -- weechat --version)\"" >&2
+WEECHAT_VERSION="$(buildah run "$CONTAINER" -- weechat --version)"
+
 cleanup "$CONTAINER"
+
+cmd buildah config \
+    --env VERSION- \
+    --env SLIM- \
+    "$CONTAINER"
+
+cmd buildah config \
+    --env WEECHAT_VERSION="$WEECHAT_VERSION" \
+    "$CONTAINER"
 
 cmd buildah config \
     --env WEECHAT_CONFIG="$WEECHAT_CONFIG" \
@@ -111,13 +122,10 @@ cmd buildah config \
     --cmd '[ "weechat" ]' \
     "$CONTAINER"
 
-echo + "VERSION=\"\$(buildah run $(quote "$CONTAINER") -- weechat --version)\"" >&2
-VERSION="$(buildah run "$CONTAINER" -- weechat --version)"
-
 cmd buildah config \
     --annotation org.opencontainers.image.title="WeeChat" \
     --annotation org.opencontainers.image.description="A container running WeeChat, a open-source Internet Relay Chat (IRC) client." \
-    --annotation org.opencontainers.image.version="$VERSION" \
+    --annotation org.opencontainers.image.version="$WEECHAT_VERSION" \
     --annotation org.opencontainers.image.url="https://github.com/SGSGermany/weechat" \
     --annotation org.opencontainers.image.authors="SGS Serious Gaming & Simulations GmbH" \
     --annotation org.opencontainers.image.vendor="SGS Serious Gaming & Simulations GmbH" \
@@ -127,8 +135,3 @@ cmd buildah config \
     "$CONTAINER"
 
 con_commit "$CONTAINER" "${TAGS[@]}"
-
-cmd podman rmi "$IMAGE-base"
-
-echo + "rm -rf ./vendor" >&2
-rm -rf "$BUILD_DIR/vendor"

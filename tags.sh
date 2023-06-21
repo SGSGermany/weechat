@@ -11,13 +11,16 @@
 # License-Filename: LICENSE
 
 set -eu -o pipefail
-export LC_ALL=C
+export LC_ALL=C.UTF-8
 
 [ -v CI_TOOLS ] && [ "$CI_TOOLS" == "SGSGermany" ] \
     || { echo "Invalid build environment: Environment variable 'CI_TOOLS' not set or invalid" >&2; exit 1; }
 
 [ -v CI_TOOLS_PATH ] && [ -d "$CI_TOOLS_PATH" ] \
     || { echo "Invalid build environment: Environment variable 'CI_TOOLS_PATH' not set or invalid" >&2; exit 1; }
+
+[ -x "$(which curl)" ] \
+    || { echo "Invalid build environment: Missing runtime dependency: curl" >&2; exit 1; }
 
 source "$CI_TOOLS_PATH/helper/common.sh.inc"
 
@@ -29,12 +32,11 @@ if [ $# -gt 0 ] && [[ "$1" =~ ^[a-zA-Z0-9_.-]+$ ]]; then
     BUILD_INFO=".${1,,}"
 fi
 
-# check runtime dependencies
-[ -x "$(which curl)" ] || { echo "Missing runtime dependency: curl" >&2; exit 1; }
-
 # lookup latest stable WeeChat version
 VERSION_URL="https://weechat.org/dev/info/stable/"
-VERSION="$(curl -sSL -f -o - "$VERSION_URL")"
+
+echo + "VERSION=\"\$(curl -sSL -f -o - $(quote "$VERSION_URL"))\"" >&2
+VERSION="$(curl -sSL -f -o - "$VERSION_URL" || true)"
 
 if [ -z "$VERSION" ]; then
     echo "Unable to read latest WeeChat version: HTTP request '$VERSION_URL' failed" >&2
