@@ -89,8 +89,11 @@ cmd buildah run "$CONTAINER" -- \
         "$WEECHAT_CACHE" \
         "$WEECHAT_RUNTIME"
 
-echo + "WEECHAT_VERSION=\"\$(buildah run $(quote "$CONTAINER") -- weechat --version)\"" >&2
-WEECHAT_VERSION="$(buildah run "$CONTAINER" -- weechat --version)"
+echo + "VERSION=\"\$(buildah run $(quote "$CONTAINER") -- weechat --version)\"" >&2
+VERSION="$(buildah run "$CONTAINER" -- weechat --version)"
+
+echo + "[[ ${VERSION@Q} == $VERSION_PATTERN ]]" >&2
+[[ "$VERSION" == $VERSION_PATTERN ]]
 
 cleanup "$CONTAINER"
 
@@ -100,7 +103,7 @@ cmd buildah config \
     "$CONTAINER"
 
 cmd buildah config \
-    --env WEECHAT_VERSION="$WEECHAT_VERSION" \
+    --env WEECHAT_VERSION="$VERSION" \
     "$CONTAINER"
 
 cmd buildah config \
@@ -125,7 +128,7 @@ cmd buildah config \
 cmd buildah config \
     --annotation org.opencontainers.image.title="WeeChat" \
     --annotation org.opencontainers.image.description="A container running WeeChat, a open-source Internet Relay Chat (IRC) client." \
-    --annotation org.opencontainers.image.version="$WEECHAT_VERSION" \
+    --annotation org.opencontainers.image.version="$VERSION" \
     --annotation org.opencontainers.image.url="https://github.com/SGSGermany/weechat" \
     --annotation org.opencontainers.image.authors="SGS Serious Gaming & Simulations GmbH" \
     --annotation org.opencontainers.image.vendor="SGS Serious Gaming & Simulations GmbH" \
