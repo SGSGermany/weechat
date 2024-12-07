@@ -36,7 +36,7 @@ chkupd_baseimage "$REGISTRY/$OWNER/$IMAGE" "$TAG" || exit 0
 # check whether a new stable WeeChat version was released
 chkupd_weechat() {
     local IMAGE="$1"
-    local VERSION="$2"
+    local VERSION="${2:-}"
 
     if [ -z "$VERSION" ]; then
         local VERSION_URL="https://weechat.org/dev/info/stable/"

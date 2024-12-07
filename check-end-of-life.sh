@@ -32,8 +32,6 @@ if [ -z "$CYCLE" ]; then
     exit 1
 fi
 
-GIT_REPO="https://github.com/weechat/weechat.git"
-
 git_ls_tags "$GIT_REPO" \
     | chkeol_versions \
     | chkeol_latest_minor "WeeChat" "$CYCLE" \

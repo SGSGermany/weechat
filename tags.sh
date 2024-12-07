@@ -46,7 +46,8 @@ elif ! [[ "$VERSION" =~ ^([0-9]+)\.([0-9]+)(\.([0-9]+))?([+~-]|$) ]]; then
     exit 1
 fi
 
-VERSION_FULL="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[4]:-0}"
+VERSION_ORIG="$VERSION"
+VERSION="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[4]:-0}"
 VERSION_MINOR="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}"
 VERSION_MAJOR="${BASH_REMATCH[1]}"
 
@@ -54,12 +55,12 @@ VERSION_MAJOR="${BASH_REMATCH[1]}"
 BUILD_INFO="$(date --utc +'%Y%m%d')$BUILD_INFO"
 
 TAGS=(
-    "v$VERSION_FULL" "v$VERSION_FULL-$BUILD_INFO"
+    "v$VERSION" "v$VERSION-$BUILD_INFO"
     "v$VERSION_MINOR" "v$VERSION_MINOR-$BUILD_INFO"
     "v$VERSION_MAJOR" "v$VERSION_MAJOR-$BUILD_INFO"
     "latest"
 )
 
 printf 'MILESTONE="%s"\n' "$VERSION_MINOR"
-printf 'VERSION="%s"\n' "$VERSION"
+printf 'VERSION="%s"\n' "$VERSION_ORIG"
 printf 'TAGS="%s"\n' "${TAGS[*]}"
