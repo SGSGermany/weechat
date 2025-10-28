@@ -25,5 +25,5 @@ elif ! [ -r "$WEECHAT_FIFO" ] || ! [ -w "$WEECHAT_FIFO" ]; then
     exit 1
 fi
 
-printf '%s\n' "*/reload" "*/relay sslcertkey" \
+printf '%s\n' "*/reload" "*/relay tlscertkey" \
     | tee "$WEECHAT_FIFO" > /dev/null

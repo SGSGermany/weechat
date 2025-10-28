@@ -20,7 +20,7 @@ PRINT_ONLY=
 
 # general setup
 set -- \
-    '*/set weechat.signal.sighup "/reload;/relay sslcertkey"' \
+    '*/set weechat.signal.sighup "/reload;/relay tlscertkey"' \
     '*/set weechat.signal.sigquit "/upgrade -yes -quit"' \
     '*/set weechat.signal.sigterm "/upgrade -yes -quit"'
 
