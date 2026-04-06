@@ -12,6 +12,7 @@
 
 set -eu -o pipefail
 export LC_ALL=C.UTF-8
+shopt -s nullglob
 
 [ -v CI_TOOLS ] && [ "$CI_TOOLS" == "SGSGermany" ] \
     || { echo "Invalid build environment: Environment variable 'CI_TOOLS' not set or invalid" >&2; exit 1; }
@@ -64,6 +65,13 @@ rm -f "$MOUNT/usr/bin/weechat" "$MOUNT/usr/bin/weechat-headless"
 echo + "rsync -v -rl --exclude .gitignore ./src/ …/" >&2
 rsync -v -rl --exclude '.gitignore' "$BUILD_DIR/src/" "$MOUNT/"
 
+for PLUGIN in "$BUILD_DIR/plugins/"*"/src/"; do
+    PLUGIN="$(sed -ne 's#^.*/\([^/]*\)/src/$#\1#p' <<< "$PLUGIN")"
+
+    echo + "rsync -v -rl --exclude .gitignore $(quote "./plugins/$PLUGIN/src/") …/" >&2
+    rsync -v -rl --exclude '.gitignore' "$BUILD_DIR/plugins/$PLUGIN/src/" "$MOUNT/"
+done
+
 echo + "ln -s /opt/weechat/include/weechat/ …/usr/include/weechat" >&2
 ln -s "/opt/weechat/include/weechat/" "$MOUNT/usr/include/weechat"
 
@@ -100,6 +108,13 @@ VERSION="$(buildah run "$CONTAINER" -- weechat --version)"
 
 echo + "[[ ${VERSION@Q} == $VERSION_PATTERN ]]" >&2
 [[ "$VERSION" == $VERSION_PATTERN ]]
+
+for PLUGIN in "$BUILD_DIR/plugins/"*"/build.sh.inc"; do
+    PLUGIN="$(sed -ne 's#^.*/\([^/]*\)/build\.sh\.inc$#\1#p' <<< "$PLUGIN")"
+
+    echo + "source $(quote "./plugins/$PLUGIN/build.sh.inc")" >&2
+    source "$BUILD_DIR/plugins/$PLUGIN/build.sh.inc"
+done
 
 cleanup "$CONTAINER"
 
