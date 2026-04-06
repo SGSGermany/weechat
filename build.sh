@@ -64,6 +64,12 @@ rm -f "$MOUNT/usr/bin/weechat" "$MOUNT/usr/bin/weechat-headless"
 echo + "rsync -v -rl --exclude .gitignore ./src/ …/" >&2
 rsync -v -rl --exclude '.gitignore' "$BUILD_DIR/src/" "$MOUNT/"
 
+echo + "ln -s /opt/weechat/include/weechat/ …/usr/include/weechat" >&2
+ln -s "/opt/weechat/include/weechat/" "$MOUNT/usr/include/weechat"
+
+echo + "ln -s /opt/weechat/lib/pkgconfig/weechat.pc …/usr/lib/pkgconfig/weechat.pc" >&2
+ln -s "/opt/weechat/lib/pkgconfig/weechat.pc" "$MOUNT/usr/lib/pkgconfig/weechat.pc"
+
 pkg_install "$CONTAINER" \
     inotify-tools
 
